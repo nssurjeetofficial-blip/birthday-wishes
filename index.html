@@ -407,7 +407,14 @@ const audio = $('birthdayMusic');
 
 let photoData = '';
 let musicReady = false;
+let youtubePlayer = null;
+let youtubeReady = false;
 
+function onYouTubeIframeAPIReady() {
+  youtubeReady = true;
+  console.log('YouTube Player API Ready 🎵');
+  }
+  
 const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
 const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
 
