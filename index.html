@@ -414,6 +414,33 @@ function onYouTubeIframeAPIReady() {
   youtubeReady = true;
   console.log('YouTube Player API Ready 🎵');
   }
+  function getYouTubeId(url) {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.hostname.includes('youtu.be')) {
+      return parsed.pathname.slice(1);
+    }
+
+    if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') {
+        return parsed.searchParams.get('v');
+      }
+
+      if (parsed.pathname.startsWith('/shorts/')) {
+        return parsed.pathname.split('/')[2];
+      }
+
+      if (parsed.pathname.startsWith('/embed/')) {
+        return parsed.pathname.split('/')[2];
+      }
+    }
+  } catch (error) {
+    return null;
+  }
+
+  return null;
+  }
   
 const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
 const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
