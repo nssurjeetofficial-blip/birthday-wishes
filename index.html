@@ -441,6 +441,47 @@ function onYouTubeIframeAPIReady() {
 
   return null;
   }
+function loadYouTubeSong(url) {
+  const videoId = getYouTubeId(url);
+
+  if (!videoId) {
+    alert('Please enter a valid YouTube link!');
+    return;
+  }
+
+  if (!youtubeReady) {
+    alert('YouTube player is still loading. Try again!');
+    return;
+  }
+
+  if (youtubePlayer) {
+    youtubePlayer.destroy();
+  }
+
+  const playerBox = document.createElement('div');
+  playerBox.id = 'youtubePlayerBox';
+  playerBox.style.width = '320px';
+  playerBox.style.height = '180px';
+
+  let oldBox = $('youtubePlayerBox');
+  if (oldBox) oldBox.remove();
+
+  $('birthdayContent').appendChild(playerBox);
+
+  youtubePlayer = new YT.Player('youtubePlayerBox', {
+    width: '320',
+    height: '180',
+    videoId: videoId,
+    playerVars: {
+  playsinline: 1
+},
+events: {
+  onReady: function(event) {
+    event.target.playVideo();
+  }
+}
+  });
+}
   
 const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
 const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
@@ -694,6 +735,19 @@ if (pageId) {
 } else {
   updatePreview();
 }
+  $('musicBtn').addEventListener('click', function(e) {
+  if (youtubeInput.value.trim()) {
+    e.stopImmediatePropagation();
+    loadYouTubeSong(youtubeInput.value.trim());
+  }
+}, true);
+
+$('pauseBtn').addEventListener('click', function(e) {
+  if (youtubeInput.value.trim() && youtubePlayer) {
+    e.stopImmediatePropagation();
+    youtubePlayer.pauseVideo();
+  }
+}, true);
 </script>
 </body>
   </html>
