@@ -386,6 +386,9 @@ footer {
 <audio id="birthdayMusic" loop></audio>
 
 <script>
+const SUPABASE_URL = "https://uuaigqvnakcglryqhspt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-chziJ_dZ5GzfpcGw3G-Wg_7UFhfNjB";
+
 const $ = id => document.getElementById(id);
 
 const nameInput = $('personName');
@@ -394,8 +397,21 @@ const messageInput = $('customMessage');
 const musicInput = $('musicUrl');
 const photoInput = $('photoInput');
 
+const audio = $('birthdayMusic');
+
 let photoData = '';
 let musicReady = false;
+
+const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
+const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
+
+function headers() {
+  return {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY
+  };
+}
 
 function updatePreview() {
   const name = nameInput.value.trim() || 'Someone Special';
@@ -406,7 +422,8 @@ function updatePreview() {
     messageInput.value.trim() ||
     'Wishing you a day filled with love, happiness and beautiful memories! 💗';
 
-  $('greeting').textContent = 'A LITTLE SURPRISE FOR YOU, ' + name.toUpperCase() + ' 💗';
+  $('greeting').textContent =
+    'A LITTLE SURPRISE FOR YOU, ' + name.toUpperCase() + ' 💗';
 }
 
 [nameInput, relationInput, messageInput].forEach(el => {
@@ -431,11 +448,13 @@ photoInput.addEventListener('change', () => {
   }
 
   const reader = new FileReader();
+
   reader.onload = () => {
     photoData = reader.result;
     $('previewPhoto').src = photoData;
     $('previewPhoto').style.display = 'block';
   };
+
   reader.readAsDataURL(file);
 });
 
@@ -451,11 +470,15 @@ function burst() {
 
   for (let i = 0; i < 24; i++) {
     const item = document.createElement('span');
+
     item.className = 'floating';
-    item.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    item.textContent =
+      symbols[Math.floor(Math.random() * symbols.length)];
+
     item.style.left = Math.random() * 100 + '%';
     item.style.fontSize = (16 + Math.random() * 20) + 'px';
     item.style.animationDuration = (2 + Math.random() * 2) + 's';
+
     effects.appendChild(item);
     setTimeout(() => item.remove(), 4500);
   }
@@ -468,21 +491,19 @@ $('giftBtn').addEventListener('click', () => {
   burst();
 });
 
-const audio = $('birthdayMusic');
-
 $('musicBtn').addEventListener('click', async () => {
   const url = musicInput.value.trim();
 
   if (!url) {
-    alert('Please add a direct audio link in the music field first.');
-    musicInput.focus();
+    alert('Birthday music is not available.');
     return;
   }
 
   try {
     const parsed = new URL(url);
+
     if (!['https:', 'http:'].includes(parsed.protocol)) {
-      throw new Error('Invalid protocol');
+      throw new Error('Invalid URL');
     }
 
     if (!musicReady || audio.src !== parsed.href) {
@@ -492,8 +513,9 @@ $('musicBtn').addEventListener('click', async () => {
 
     await audio.play();
     $('musicBtn').textContent = '🎵 Music Playing';
+
   } catch (error) {
-    alert('Music could not play. Please check that your link points directly to an audio file and allows playback.');
+    alert('Music could not play. Please check the audio link.');
   }
 });
 
@@ -502,75 +524,136 @@ $('pauseBtn').addEventListener('click', () => {
   $('musicBtn').textContent = '🎵 Play Birthday Music';
 });
 
-function encodeDetails() {
-  const data = {
-    name: nameInput.value.trim(),
-    relation: relationInput.value,
-    message: messageInput.value.trim(),
-    music: musicInput.value.trim()
-  };
-
-  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-}
-
-function restoreDetails() {
-  if (!location.hash.startsWith('#wish=')) return;
-
-  try {
-    const data = JSON.parse(
-      decodeURIComponent(escape(atob(location.hash.slice(6))))
-    );
-
-    nameInput.value = data.name || '';
-    relationInput.value = data.relation || 'Birthday Star';
-    messageInput.value = data.message || '';
-    musicInput.value = data.music || '';
-    updatePreview();
-  } catch (error) {
-    console.log('Could not restore shared details.');
-  }
-}
-
+// CREATE PERMANENT BIRTHDAY PAGE
 $('shareBtn').addEventListener('click', async () => {
-  if (!nameInput.value.trim()) {
+  const name = nameInput.value.trim();
+
+  if (!name) {
     alert('Please enter the birthday person’s name first.');
     nameInput.focus();
     return;
   }
 
-  const link = location.href.split('#')[0] + '#wish=' + encodeDetails();
+  const button = $('shareBtn');
+  button.disabled = true;
+  button.textContent = 'Creating your birthday page... 💗';
 
-  $('shareLink').value = link;
-  $('shareLink').classList.remove('hidden');
-  $('copyBtn').classList.remove('hidden');
-  $('shareStatus').textContent =
-    'Link ready! Photo upload is not included. Open the link to restore the text details.';
+  try {
+    const response = await fetch(CREATE_URL, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        name: name,
+        relation: relationInput.value,
+        message: messageInput.value.trim(),
+        music: musicInput.value.trim()
+      })
+    });
 
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Birthday Wishes 🎀',
-        text: 'I made a special birthday surprise for you! 💗',
-        url: link
-      });
-    } catch (error) {
-      // The user may close the sharing menu; the link remains visible.
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Could not create page');
     }
+
+    const link = location.origin + location.pathname +
+      '?id=' + encodeURIComponent(result.slug);
+
+    $('shareLink').value = link;
+    $('shareLink').classList.remove('hidden');
+    $('copyBtn').classList.remove('hidden');
+
+    $('shareStatus').textContent =
+      'Your birthday page is ready! 🎀';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Birthday Wishes 🎀',
+          text: 'I made a special birthday surprise for you! 💗',
+          url: link
+        });
+      } catch (error) {
+        // Sharing menu closed; link remains visible.
+      }
+    }
+
+  } catch (error) {
+    alert('Error: ' + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = '💌 Create & Share Link';
   }
 });
 
+// COPY LINK
 $('copyBtn').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('shareLink').value);
     $('shareStatus').textContent = 'Link copied! 💗';
   } catch (error) {
     $('shareLink').select();
-    $('shareStatus').textContent = 'Select the link above and copy it manually.';
+    $('shareStatus').textContent =
+      'Select the link above and copy it manually.';
   }
 });
 
-restoreDetails();
-updatePreview();
+// LOAD BIRTHDAY PAGE FROM DATABASE
+async function loadBirthdayPage(slug) {
+  $('creator').classList.add('hidden');
+
+  document.querySelector('header h1').textContent =
+    'A Special Birthday Surprise 🎀';
+
+  $('shareBtn').parentElement.classList.add('hidden');
+
+  $('birthdayCard').classList.remove('hidden');
+
+  $('previewName').textContent = 'Loading...';
+  $('previewMessage').textContent =
+    'Preparing your special birthday surprise... 💗';
+
+  try {
+    const response = await fetch(GET_URL, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ slug })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Birthday page not found');
+    }
+
+    const page = result.page;
+
+    nameInput.value = page.person_name || '';
+    relationInput.value = page.relation || 'Birthday Star';
+    messageInput.value = page.birthday_message || '';
+    musicInput.value = page.music_url || '';
+
+    updatePreview();
+
+    $('shareLink').value = location.href;
+    burst();
+
+  } catch (error) {
+    $('previewName').textContent = 'Surprise Not Found 💔';
+    $('previewMessage').textContent =
+      'This birthday page could not be loaded. Please check the link.';
+  }
+}
+
+// INITIAL PAGE SETUP
+const params = new URLSearchParams(location.search);
+const pageId = params.get('id');
+
+if (pageId) {
+  loadBirthdayPage(pageId);
+} else {
+  updatePreview();
+}
 </script>
 </body>
   </html>
