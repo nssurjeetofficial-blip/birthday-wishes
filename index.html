@@ -402,7 +402,6 @@ const messageInput = $('customMessage');
 const musicInput = $('musicUrl');
 const youtubeInput = $('youtubeUrl');
 const photoInput = $('photoInput');
-
 const audio = $('birthdayMusic');
 
 let photoData = '';
@@ -410,19 +409,27 @@ let musicReady = false;
 let youtubePlayer = null;
 let youtubeReady = false;
 
-function onYouTubeIframeAPIReady() {
+const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
+const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
+
+// YOUTUBE API
+window.onYouTubeIframeAPIReady = function () {
   youtubeReady = true;
   console.log('YouTube Player API Ready 🎵');
-  }
-  function getYouTubeId(url) {
+};
+
+function getYouTubeId(url) {
   try {
     const parsed = new URL(url);
 
-    if (parsed.hostname.includes('youtu.be')) {
+    if (parsed.hostname === 'youtu.be') {
       return parsed.pathname.slice(1);
     }
 
-    if (parsed.hostname.includes('youtube.com')) {
+    if (
+      parsed.hostname === 'youtube.com' ||
+      parsed.hostname.endsWith('.youtube.com')
+    ) {
       if (parsed.pathname === '/watch') {
         return parsed.searchParams.get('v');
       }
@@ -440,7 +447,9 @@ function onYouTubeIframeAPIReady() {
   }
 
   return null;
-  }
+}
+
+// LOAD YOUTUBE MUSIC
 function loadYouTubeSong(url) {
   const videoId = getYouTubeId(url);
 
@@ -450,21 +459,23 @@ function loadYouTubeSong(url) {
   }
 
   if (!youtubeReady) {
-    alert('YouTube player is still loading. Try again!');
+    alert('YouTube player is still loading. Please try again!');
     return;
   }
 
   if (youtubePlayer) {
     youtubePlayer.destroy();
+    youtubePlayer = null;
   }
+
+  const oldBox = $('youtubePlayerBox');
+  if (oldBox) oldBox.remove();
 
   const playerBox = document.createElement('div');
   playerBox.id = 'youtubePlayerBox';
   playerBox.style.width = '320px';
+  playerBox.style.maxWidth = '100%';
   playerBox.style.height = '180px';
-
-  let oldBox = $('youtubePlayerBox');
-  if (oldBox) oldBox.remove();
 
   $('birthdayContent').appendChild(playerBox);
 
@@ -473,19 +484,21 @@ function loadYouTubeSong(url) {
     height: '180',
     videoId: videoId,
     playerVars: {
-  playsinline: 1
-},
-events: {
-  onReady: function(event) {
-    event.target.playVideo();
-  }
-}
+      playsinline: 1,
+      controls: 1
+    },
+    events: {
+      onReady: function(event) {
+        event.target.playVideo();
+      },
+      onError: function() {
+        alert('This YouTube song could not be played.');
+      }
+    }
   });
 }
-  
-const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
-const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
 
+// HEADERS
 function headers() {
   return {
     "Content-Type": "application/json",
@@ -494,11 +507,13 @@ function headers() {
   };
 }
 
+// UPDATE PREVIEW
 function updatePreview() {
   const name = nameInput.value.trim() || 'Someone Special';
 
   $('previewName').textContent = name;
   $('previewRelation').textContent = relationInput.value;
+
   $('previewMessage').textContent =
     messageInput.value.trim() ||
     'Wishing you a day filled with love, happiness and beautiful memories! 💗';
@@ -512,6 +527,7 @@ function updatePreview() {
   el.addEventListener('change', updatePreview);
 });
 
+// PHOTO PREVIEW
 photoInput.addEventListener('change', () => {
   const file = photoInput.files[0];
   if (!file) return;
@@ -539,15 +555,19 @@ photoInput.addEventListener('change', () => {
   reader.readAsDataURL(file);
 });
 
+// PREVIEW BUTTON
 $('previewBtn').addEventListener('click', () => {
   updatePreview();
   $('birthdayCard').scrollIntoView({ behavior: 'smooth' });
   burst();
 });
 
+// EFFECTS
 function burst() {
   const effects = $('effects');
-  const symbols = ['💗','💕','✨','🌸','🎀','💖'];
+  const symbols = ['💗', '💕', '✨', '🌸', '🎀', '💖'];
+
+  if (!effects) return;
 
   for (let i = 0; i < 24; i++) {
     const item = document.createElement('span');
@@ -565,11 +585,15 @@ function burst() {
   }
 }
 
+// GIFT BUTTON
 $('giftBtn').addEventListener('click', () => {
   $('giftMessage').classList.remove('hidden');
   $('giftHint').textContent = 'Surprise! Sending you lots of love! 💗';
   $('giftBtn').textContent = '💝';
   burst();
+});
+
+// MUSIC PLAY BUTTON
 $('musicBtn').addEventListener('click', async () => {
   const youtubeUrl = youtubeInput.value.trim();
   const mp3Url = musicInput.value.trim();
@@ -601,12 +625,13 @@ $('musicBtn').addEventListener('click', async () => {
     $('musicBtn').textContent = '🎵 Music Playing';
 
   } catch (error) {
-    alert('Music could not play. Check your audio link.');
+    alert('Music could not play. Please check your audio link.');
   }
 });
 
+// MUSIC PAUSE BUTTON
 $('pauseBtn').addEventListener('click', () => {
-  if (youtubePlayer && youtubeInput.value.trim()) {
+  if (youtubePlayer) {
     youtubePlayer.pauseVideo();
   }
 
@@ -636,7 +661,9 @@ $('shareBtn').addEventListener('click', async () => {
         name: name,
         relation: relationInput.value,
         message: messageInput.value.trim(),
-        music: musicInput.value.trim()
+
+        // Save either YouTube or MP3 URL
+        music: youtubeInput.value.trim() || musicInput.value.trim()
       })
     });
 
@@ -664,12 +691,13 @@ $('shareBtn').addEventListener('click', async () => {
           url: link
         });
       } catch (error) {
-        // Sharing menu closed; link remains visible.
+        // Link remains visible if sharing is cancelled.
       }
     }
 
   } catch (error) {
     alert('Error: ' + error.message);
+
   } finally {
     button.disabled = false;
     button.textContent = '💌 Create & Share Link';
@@ -681,6 +709,7 @@ $('copyBtn').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('shareLink').value);
     $('shareStatus').textContent = 'Link copied! 💗';
+
   } catch (error) {
     $('shareLink').select();
     $('shareStatus').textContent =
@@ -696,7 +725,6 @@ async function loadBirthdayPage(slug) {
     'A Special Birthday Surprise 🎀';
 
   $('shareBtn').parentElement.classList.add('hidden');
-
   $('birthdayCard').classList.remove('hidden');
 
   $('previewName').textContent = 'Loading...';
@@ -717,11 +745,20 @@ async function loadBirthdayPage(slug) {
     }
 
     const page = result.page;
+    const savedMusic = page.music_url || '';
 
     nameInput.value = page.person_name || '';
     relationInput.value = page.relation || 'Birthday Star';
     messageInput.value = page.birthday_message || '';
-    musicInput.value = page.music_url || '';
+
+    // Detect saved YouTube or MP3 link
+    if (getYouTubeId(savedMusic)) {
+      youtubeInput.value = savedMusic;
+      musicInput.value = '';
+    } else {
+      musicInput.value = savedMusic;
+      youtubeInput.value = '';
+    }
 
     updatePreview();
 
@@ -744,7 +781,6 @@ if (pageId) {
 } else {
   updatePreview();
 }
-  
-</script>
+  </script>
 </body>
   </html>
