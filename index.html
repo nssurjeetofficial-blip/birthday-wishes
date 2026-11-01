@@ -315,17 +315,27 @@ footer {
       <input id="photoInput" type="file" accept="image/*">
       <p class="helper">The selected photo stays in this browser for this preview.</p>
     </div>
-    <div>
-  <label for="musicUrl">Direct Music Link 🎵</label>
-  <input id="musicUrl" type="url" placeholder="Direct MP3, OGG or WAV link">
-</div>
+    <div class="music-search">
+  <h3>🎵 Find Your Birthday Song</h3>
 
-<div>
-  <label for="youtubeUrl">YouTube Music Link ▶️</label>
-  <input id="youtubeUrl" type="url"
-    placeholder="Paste YouTube song link">
-  <p class="helper">You can use a YouTube video or Shorts link.</p>
+  <div class="search-box">
+    <input
+      type="text"
+      id="songSearch"
+      placeholder="Search your favourite song..."
+    >
+
+    <button type="button" id="searchSongBtn">
+      Search 🔍
+    </button>
   </div>
+
+  <div id="songResults"></div>
+
+  <p id="selectedSong">No song selected 🎶</p>
+
+  <input type="hidden" id="musicUrl">
+    </div>
   <button class="primary" id="previewBtn">✨ Create My Birthday Page</button>
 </section>
 
@@ -354,7 +364,7 @@ footer {
       Wishing you a day filled with love, happiness and beautiful memories! 💗
     </p>
 
-    <div class="decorations">🎂 🎁 🌸 🎁 🎂</div>
+    <div class="decorations">🫀🥀🎀</div>
 
     <button class="gift-button" id="giftBtn" aria-label="Open surprise gift">
       🎁
@@ -388,8 +398,6 @@ footer {
 
 <audio id="birthdayMusic" loop></audio>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
 const SUPABASE_URL = "https://uuaigqvnakcglryqhspt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-chziJ_dZ5GzfpcGw3G-Wg_7UFhfNjB";
@@ -400,105 +408,16 @@ const nameInput = $('personName');
 const relationInput = $('relation');
 const messageInput = $('customMessage');
 const musicInput = $('musicUrl');
-const youtubeInput = $('youtubeUrl');
 const photoInput = $('photoInput');
 const audio = $('birthdayMusic');
 
 let photoData = '';
 let musicReady = false;
-let youtubePlayer = null;
-let youtubeReady = false;
 
 const CREATE_URL = SUPABASE_URL + "/functions/v1/create-birthday";
 const GET_URL = SUPABASE_URL + "/functions/v1/get-birthday";
 
-// YOUTUBE API
-window.onYouTubeIframeAPIReady = function () {
-  youtubeReady = true;
-  console.log('YouTube Player API Ready 🎵');
-};
-
-function getYouTubeId(url) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.hostname === 'youtu.be') {
-      return parsed.pathname.slice(1);
-    }
-
-    if (
-      parsed.hostname === 'youtube.com' ||
-      parsed.hostname.endsWith('.youtube.com')
-    ) {
-      if (parsed.pathname === '/watch') {
-        return parsed.searchParams.get('v');
-      }
-
-      if (parsed.pathname.startsWith('/shorts/')) {
-        return parsed.pathname.split('/')[2];
-      }
-
-      if (parsed.pathname.startsWith('/embed/')) {
-        return parsed.pathname.split('/')[2];
-      }
-    }
-  } catch (error) {
-    return null;
-  }
-
-  return null;
-}
-
-// LOAD YOUTUBE MUSIC
-function loadYouTubeSong(url) {
-  const videoId = getYouTubeId(url);
-
-  if (!videoId) {
-    alert('Please enter a valid YouTube link!');
-    return;
-  }
-
-  if (!youtubeReady) {
-    alert('YouTube player is still loading. Please try again!');
-    return;
-  }
-
-  if (youtubePlayer) {
-    youtubePlayer.destroy();
-    youtubePlayer = null;
-  }
-
-  const oldBox = $('youtubePlayerBox');
-  if (oldBox) oldBox.remove();
-
-  const playerBox = document.createElement('div');
-  playerBox.id = 'youtubePlayerBox';
-  playerBox.style.width = '320px';
-  playerBox.style.maxWidth = '100%';
-  playerBox.style.height = '180px';
-
-  $('birthdayContent').appendChild(playerBox);
-
-  youtubePlayer = new YT.Player('youtubePlayerBox', {
-    width: '320',
-    height: '180',
-    videoId: videoId,
-    playerVars: {
-      playsinline: 1,
-      controls: 1
-    },
-    events: {
-      onReady: function(event) {
-        event.target.playVideo();
-      },
-      onError: function() {
-        alert('This YouTube song could not be played.');
-      }
-    }
-  });
-}
-
-// HEADERS
+// SUPABASE HEADERS
 function headers() {
   return {
     "Content-Type": "application/json",
@@ -562,7 +481,7 @@ $('previewBtn').addEventListener('click', () => {
   burst();
 });
 
-// EFFECTS
+// ANIMATION EFFECTS
 function burst() {
   const effects = $('effects');
   const symbols = ['💗', '💕', '✨', '🌸', '🎀', '💖'];
@@ -593,48 +512,134 @@ $('giftBtn').addEventListener('click', () => {
   burst();
 });
 
-// MUSIC PLAY BUTTON
-$('musicBtn').addEventListener('click', async () => {
-  const youtubeUrl = youtubeInput.value.trim();
-  const mp3Url = musicInput.value.trim();
+// =================================
+// SONG SEARCH SYSTEM - iTUNES API
+// =================================
 
-  if (youtubeUrl) {
-    loadYouTubeSong(youtubeUrl);
-    $('musicBtn').textContent = '🎵 Music Playing';
+$('searchSongBtn').addEventListener('click', searchSongs);
+
+$('songSearch').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    searchSongs();
+  }
+});
+
+async function searchSongs() {
+  const query = $('songSearch').value.trim();
+  const results = $('songResults');
+  const searchButton = $('searchSongBtn');
+
+  if (!query) {
+    alert('Please enter a song name!');
     return;
   }
 
-  if (!mp3Url) {
-    alert('Please add a YouTube or direct MP3 link.');
+  results.innerHTML = 'Searching songs... 🎵';
+  searchButton.disabled = true;
+
+  try {
+    const apiURL =
+      'https://itunes.apple.com/search?term=' +
+      encodeURIComponent(query) +
+      '&entity=song&limit=15';
+
+    const response = await fetch(apiURL);
+
+    if (!response.ok) {
+      throw new Error('Search request failed');
+    }
+
+    const data = await response.json();
+
+    results.innerHTML = '';
+
+    const songs = (data.results || []).filter(song => song.previewUrl);
+
+    if (!songs.length) {
+      results.textContent = 'No preview songs found. Try another search.';
+      return;
+    }
+
+    songs.forEach(song => {
+      const item = document.createElement('div');
+      item.className = 'song-result';
+
+      const image = document.createElement('img');
+      image.src = song.artworkUrl100 || '';
+      image.alt = 'Album artwork';
+
+      const details = document.createElement('div');
+
+      const title = document.createElement('strong');
+      title.textContent = song.trackName;
+
+      const artist = document.createElement('p');
+      artist.textContent = song.artistName;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Select Song 🎵';
+
+      button.addEventListener('click', () => {
+        audio.pause();
+
+        musicInput.value = song.previewUrl;
+        audio.src = song.previewUrl;
+        musicReady = true;
+
+        $('selectedSong').textContent =
+          'Selected: ' + song.trackName + ' — ' + song.artistName;
+
+        $('musicBtn').textContent = '🎵 Play Birthday Music';
+
+        results.querySelectorAll('button').forEach(btn => {
+          btn.textContent = 'Select Song 🎵';
+        });
+
+        button.textContent = 'Selected ✓';
+      });
+
+      details.append(title, artist, button);
+      item.append(image, details);
+      results.appendChild(item);
+    });
+
+  } catch (error) {
+    results.textContent =
+      'Song search failed. Please check your internet and try again.';
+
+  } finally {
+    searchButton.disabled = false;
+  }
+}
+
+// PLAY MUSIC
+$('musicBtn').addEventListener('click', async () => {
+  const url = musicInput.value.trim();
+
+  if (!url) {
+    alert('Please search and select a song first! 🎵');
     return;
   }
 
   try {
-    const parsed = new URL(mp3Url);
-
-    if (!['https:', 'http:'].includes(parsed.protocol)) {
-      throw new Error('Invalid URL');
-    }
-
-    if (!musicReady || audio.src !== parsed.href) {
-      audio.src = parsed.href;
+    if (!musicReady || audio.src !== url) {
+      audio.src = url;
       musicReady = true;
     }
 
     await audio.play();
+
     $('musicBtn').textContent = '🎵 Music Playing';
 
   } catch (error) {
-    alert('Music could not play. Please check your audio link.');
+    alert('Music could not play. Please select another song.');
   }
 });
 
-// MUSIC PAUSE BUTTON
+// PAUSE MUSIC
 $('pauseBtn').addEventListener('click', () => {
-  if (youtubePlayer) {
-    youtubePlayer.pauseVideo();
-  }
-
   audio.pause();
   $('musicBtn').textContent = '🎵 Play Birthday Music';
 });
@@ -650,6 +655,7 @@ $('shareBtn').addEventListener('click', async () => {
   }
 
   const button = $('shareBtn');
+
   button.disabled = true;
   button.textContent = 'Creating your birthday page... 💗';
 
@@ -657,13 +663,12 @@ $('shareBtn').addEventListener('click', async () => {
     const response = await fetch(CREATE_URL, {
       method: 'POST',
       headers: headers(),
+
       body: JSON.stringify({
         name: name,
         relation: relationInput.value,
         message: messageInput.value.trim(),
-
-        // Save either YouTube or MP3 URL
-        music: youtubeInput.value.trim() || musicInput.value.trim()
+        music: musicInput.value.trim()
       })
     });
 
@@ -691,7 +696,7 @@ $('shareBtn').addEventListener('click', async () => {
           url: link
         });
       } catch (error) {
-        // Link remains visible if sharing is cancelled.
+        // Link remains available.
       }
     }
 
@@ -704,7 +709,7 @@ $('shareBtn').addEventListener('click', async () => {
   }
 });
 
-// COPY LINK
+// COPY SHARE LINK
 $('copyBtn').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('shareLink').value);
@@ -717,7 +722,7 @@ $('copyBtn').addEventListener('click', async () => {
   }
 });
 
-// LOAD BIRTHDAY PAGE FROM DATABASE
+// LOAD BIRTHDAY PAGE
 async function loadBirthdayPage(slug) {
   $('creator').classList.add('hidden');
 
@@ -745,19 +750,22 @@ async function loadBirthdayPage(slug) {
     }
 
     const page = result.page;
-    const savedMusic = page.music_url || '';
 
     nameInput.value = page.person_name || '';
     relationInput.value = page.relation || 'Birthday Star';
     messageInput.value = page.birthday_message || '';
 
-    // Detect saved YouTube or MP3 link
-    if (getYouTubeId(savedMusic)) {
-      youtubeInput.value = savedMusic;
-      musicInput.value = '';
+    const savedMusic = page.music_url || '';
+
+    musicInput.value = savedMusic;
+    musicReady = Boolean(savedMusic);
+
+    if (savedMusic) {
+      audio.src = savedMusic;
+      $('selectedSong').textContent =
+        'Birthday song is ready! 🎵';
     } else {
-      musicInput.value = savedMusic;
-      youtubeInput.value = '';
+      $('selectedSong').textContent = 'No song selected 🎶';
     }
 
     updatePreview();
@@ -781,6 +789,6 @@ if (pageId) {
 } else {
   updatePreview();
 }
-  </script>
+</script>
 </body>
   </html>
