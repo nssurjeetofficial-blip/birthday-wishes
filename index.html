@@ -264,6 +264,103 @@ footer {
   }
   .full { grid-column: 1 / -1; }
 }
+  /* Premium Birthday Song Cards */
+#songResults {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.song-result {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px;
+    border: 1px solid #f5c8df;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #fff7fb, #f4efff);
+    box-shadow: 0 5px 16px rgba(180, 120, 170, 0.10);
+    transition: 0.25s ease;
+}
+
+.song-result.selected {
+    border: 2px solid #ff83b5;
+    background: linear-gradient(135deg, #ffe8f3, #eee7ff);
+}
+
+.song-result img {
+    width: 65px;
+    height: 65px;
+    object-fit: cover;
+    border-radius: 13px;
+}
+
+.song-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.song-info h4 {
+    margin: 0 0 5px;
+    color: #573c65;
+    font-size: 14px;
+}
+
+.song-info p {
+    margin: 0;
+    color: #987b9d;
+    font-size: 12px;
+}
+
+.song-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.song-actions button {
+    border: 0;
+    border-radius: 20px;
+    padding: 8px 11px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.preview-song {
+    background: #eee5ff;
+    color: #7553a6;
+}
+
+.select-song {
+    background: linear-gradient(135deg, #ff83b5, #b9a5ff);
+    color: white;
+}
+
+#selectedSong {
+    color: #a34f83;
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+}
+
+@media (max-width: 380px) {
+    .song-result {
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .song-result img {
+        width: 52px;
+        height: 52px;
+    }
+
+    .song-actions button {
+        padding: 7px 8px;
+        font-size: 10px;
+    }
+                                }
+  
 </style>
 </head>
 
