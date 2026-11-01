@@ -570,18 +570,23 @@ $('giftBtn').addEventListener('click', () => {
   $('giftHint').textContent = 'Surprise! Sending you lots of love! 💗';
   $('giftBtn').textContent = '💝';
   burst();
-});
-
 $('musicBtn').addEventListener('click', async () => {
-  const url = musicInput.value.trim();
+  const youtubeUrl = youtubeInput.value.trim();
+  const mp3Url = musicInput.value.trim();
 
-  if (!url) {
-    alert('Birthday music is not available.');
+  if (youtubeUrl) {
+    loadYouTubeSong(youtubeUrl);
+    $('musicBtn').textContent = '🎵 Music Playing';
+    return;
+  }
+
+  if (!mp3Url) {
+    alert('Please add a YouTube or direct MP3 link.');
     return;
   }
 
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(mp3Url);
 
     if (!['https:', 'http:'].includes(parsed.protocol)) {
       throw new Error('Invalid URL');
@@ -596,11 +601,15 @@ $('musicBtn').addEventListener('click', async () => {
     $('musicBtn').textContent = '🎵 Music Playing';
 
   } catch (error) {
-    alert('Music could not play. Please check the audio link.');
+    alert('Music could not play. Check your audio link.');
   }
 });
 
 $('pauseBtn').addEventListener('click', () => {
+  if (youtubePlayer && youtubeInput.value.trim()) {
+    youtubePlayer.pauseVideo();
+  }
+
   audio.pause();
   $('musicBtn').textContent = '🎵 Play Birthday Music';
 });
@@ -735,19 +744,7 @@ if (pageId) {
 } else {
   updatePreview();
 }
-  $('musicBtn').addEventListener('click', function(e) {
-  if (youtubeInput.value.trim()) {
-    e.stopImmediatePropagation();
-    loadYouTubeSong(youtubeInput.value.trim());
-  }
-}, true);
-
-$('pauseBtn').addEventListener('click', function(e) {
-  if (youtubeInput.value.trim() && youtubePlayer) {
-    e.stopImmediatePropagation();
-    youtubePlayer.pauseVideo();
-  }
-}, true);
+  
 </script>
 </body>
   </html>
